@@ -4,20 +4,9 @@ import time
 
 COM_PORT = 'COM3'      
 BAUD_RATE = 115200
-SAMPLES_LIMIT = 100    # 100 عينة للملف (20 ثانية فقط)
+SAMPLES_LIMIT = 1000    # 1000 عينة = 10 ثوانٍ بمعدل 100Hz
 
-# قائمة الـ 9 ملفات: 2 للتدريب و 1 للاختبار من كل حالة
-tasks = [
-    ("NORMAL", "dataset_NORMAL_train1.csv", "Under 1500"),
-    ("NORMAL", "dataset_NORMAL_train2.csv", "Under 1500"),
-    ("NORMAL", "dataset_NORMAL_test.csv", "Under 1500"),
-    ("ELEVATED", "dataset_ELEVATED_train1.csv", "Between 1500 and 3000"),
-    ("ELEVATED", "dataset_ELEVATED_train2.csv", "Between 1500 and 3000"),
-    ("ELEVATED", "dataset_ELEVATED_test.csv", "Between 1500 and 3000"),
-    ("FAULT", "dataset_FAULT_train1.csv", "Above 3000"),
-    ("FAULT", "dataset_FAULT_train2.csv", "Above 3000"),
-    ("FAULT", "dataset_FAULT_test.csv", "Above 3000")
-]
+# ... (نفس مصفوفة tasks الخاصة بك) ...
 
 def collect_continuous_data():
     print(f"Connecting to {COM_PORT}...")
@@ -32,11 +21,9 @@ def collect_continuous_data():
     for class_name, filename, range_hint in tasks:
         print("="*50)
         print(f"NEXT FILE: {filename}")
-        print(f"ACTION REQUIRED: Turn potentiometer to {class_name} ({range_hint})")
-        
+        print(f"ACTION REQUIRED: Adjust to {class_name} ({range_hint})")
         input("Press [ENTER] when ready to start recording...")
         
-        print(f"Recording {SAMPLES_LIMIT} samples...")
         data = []
         ser.reset_input_buffer()
         
@@ -44,22 +31,27 @@ def collect_continuous_data():
             try:
                 line = ser.readline().decode('utf-8').strip()
                 if line:
-                    rms_value = float(line)
-                    data.append(rms_value)
-                    print(f"[{len(data)}/{SAMPLES_LIMIT}] RMS: {rms_value}")
+                    raw_value = int(line) # تحويل القراءة الخام
+                    data.append(raw_value)
+                    if len(data) % 100 == 0: # طباعة كل 100 عينة لتقليل العبء
+                        print(f"[{len(data)}/{SAMPLES_LIMIT}] Collected...")
             except ValueError:
                 pass 
             except KeyboardInterrupt:
-                print("\nSession aborted by user.")
+                print("\nSession aborted.")
                 ser.close()
                 return
 
-        df = pd.DataFrame({'timestamp': range(len(data)), 'rms_value': data})
+        # Edge Impulse يفضل وجود عمود للزمن بالملي ثانية
+        df = pd.DataFrame({
+            'timestamp': [i * 10 for i in range(len(data))], # 0, 10, 20, 30 ms...
+            'raw_value': data
+        })
         df.to_csv(filename, index=False)
         print(f"✅ Saved successfully: {filename}\n")
         
     ser.close()
-    print("🎉 All 9 files have been collected and saved! Great job.")
+    print("🎉 All 9 files collected!")
 
 if __name__ == '__main__':
     collect_continuous_data()
