@@ -21,9 +21,16 @@
 
 #define DISPLAY_INTERVAL_MS 500
 #define ALARM_INTERVAL_MS 200
+/*Machine States*/
+typedef enum {
+    NORMAL_STATE = 0,
+    ELEVATED_STATE = 1,
+    FAULT_STATE = 2
+} MachineState_t;
+
 
 void OLED_init(void);
-void OLED_TASK(void* Parameters);
+void OLED_DISPLAY_TASK(void* Parameters);
 
 void Alarm_TASK_init(gpio_num_t BUZZER_PIN,gpio_num_t NORMALSTATE,gpio_num_t ELEVATEDSTATE,gpio_num_t ALARMSTATE);
 void Alarm_Task(void*pvParameters);
