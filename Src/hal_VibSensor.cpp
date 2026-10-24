@@ -2,6 +2,8 @@
 #include"hal_VibSensor.h"
 /*#include "tinyml_model.h"*/
 
+extern VibrationData_t runInference(float current_rms);
+
 void VIB_SENSOR_init(gpio_num_t Sensor_Pin)
 {
     pinMode(Sensor_Pin,INPUT);
@@ -41,46 +43,18 @@ void VIB_SENSOR_READ(gpio_num_t Sensor_Pin,void* pvParameters)
     payload.timestamp = millis();
     payload.inferenceCount = ++inferenceCounter;
 
-    /* Temporary simulation logic until TinyML library is plugged in */
-    if (latestSample < 1500.0f)
-    {
-        payload.state = STATE_NORMAL;
-        strncpy(payload.label, "normal", sizeof(payload.label));
-        payload.confidence = 94;
-    }
-    else if (latestSample < 2800.0f)
-    {
-        payload.state = STATE_ELEVATED;
-        strncpy(payload.label, "elevated", sizeof(payload.label));
-        payload.confidence = 88;
-    }
-    else
-    {
-        payload.state = STATE_FAULT;
-        strncpy(payload.label, "fault", sizeof(payload.label));
-        payload.confidence = 96;
-    }
+if (inferenceCounter % 10 == 0)
+        {
+            Serial.printf("[Core %d][TinyML] Inference #%lu | Pred: %s (%u%%) | Stack Free: %u B\n",xPortGetCoreID(), payload.inferenceCount, payload.label,payload.confidence, uxTaskGetStackHighWaterMark(NULL));
+        }
 
-    if (inferenceCounter % 10 == 0)
-    {
-        Serial.printf("[Core %d][TinyML] Inference #%lu | Pred: %s (%u%%) | Stack Free: %u B\n",xPortGetCoreID(), payload.inferenceCount, payload.label,payload.confidence, uxTaskGetStackHighWaterMark(NULL));
-    }
+       
+        /* Dispatch payloads via FreeRTOS Queues (Non-blocking) */
+        xQueueSend(xAlarmQueue, &payload, 0);
+        xQueueSend(xDisplayQueue, &payload, 0);
+        xQueueSend(xMqttQueue, &payload, 0);
 
-/*********************************/
-    for( ; ; )
-    {
-        Serial.println("Vibration Sensor is Reading....");
-        *Reading=analogRead(Sensor_Pin);
-        vTaskDelay(pdMS_TO_TICKS(SAMPLE_INTERVALS_MS));
-    }
-/*********************************/    
-    /* Dispatch payloads via FreeRTOS Queues (Non-blocking) */
-    xQueueSend(xAlarmQueue, &payload, 0);
-    xQueueSend(xDisplayQueue, &payload, 0);
-    xQueueSend(xMqttQueue, &payload, 0);
-
-    esp_task_wdt_reset();
- } 
-    
-    xTaskDelete(NULL);
+        esp_task_wdt_reset();
+    } 
+    vTaskDelete(NULL);
 }
