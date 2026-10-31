@@ -15,9 +15,9 @@ typedef enum {
 // This struct will be used to pass data between ML and the UI/Network
 typedef struct {
   float rms_value;
-  MachineState_t stateEnum; // <--- تم إضافة هذا الحقل لحل مشكلة الـ Error
-  char ml_state[15]; // "NORMAL", "ELEVATED", "FAULT"
-  float confidence;  // نسبة الدقة من 0.0 إلى 100.0
+  MachineState_t stateEnum;
+  char ml_state[15];
+  float confidence; 
 } SystemState_t;
 
 // --- Function Prototypes (Interfaces) ---
@@ -26,7 +26,7 @@ typedef struct {
 void setupWiFi();
 void setupMQTT();
 void connectToMQTT();
-void vMqttTask(void *pvParameters); // <--- إضافة تعريف الدالة هنا لكي تراها main.cpp
+void vMqttTask(void *pvParameters); 
 void sendLog(const char* format, ...);
 SystemState_t runInference(float current_rms);
 
